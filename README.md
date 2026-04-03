@@ -41,3 +41,15 @@ This tutorial requires four (4) ARM64 or AMD64 based virtual or physical machine
 * [Provisioning Pod Network Routes](docs/11-pod-network-routes.md)
 * [Smoke Test](docs/12-smoke-test.md)
 * [Cleaning Up](docs/13-cleanup.md)
+
+## Local Lab Artifacts
+
+The optional Azure Terraform configuration under `infra/` is intended for local lab provisioning. Keep local Terraform inputs and state out of Git, along with generated per-lab files such as `machines.txt`, `hosts`, and `encryption-config.yaml`.
+
+Prefer shell environment variables over `infra/terraform.tfvars` for subscription-scoped or machine-specific values:
+
+```powershell
+$env:TF_VAR_subscription_id = (az account show --query id -o tsv)
+$env:TF_VAR_ssh_allowed_cidr = "<your-public-ip>/32"
+terraform -chdir=infra plan
+```

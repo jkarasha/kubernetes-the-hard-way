@@ -24,34 +24,20 @@ XXX.XXX.XXX.XXX node-0.kubernetes.local node-0 10.200.0.0/24
 XXX.XXX.XXX.XXX node-1.kubernetes.local node-1 10.200.1.0/24
 ```
 
+Do not include a header row in `machines.txt`; the schema above describes the columns for each entry.
+
 Now it's your turn to create a `machines.txt` file with the details for the three machines you will be using to create your Kubernetes cluster. Use the example machine database from above and add the details for your machines.
 
 ## Configuring SSH Access
 
-SSH will be used to configure the machines in the cluster. Verify that you have `root` SSH access to each machine listed in your machine database. You may need to enable root SSH access on each node by updating the sshd_config file and restarting the SSH server.
+SSH will be used to configure the machines in the cluster. On these Debian machines, connect as `debian` and use `sudo` when a command requires elevated privileges.
 
-### Enable root SSH Access
+### Use `sudo` Instead of Root SSH
 
-If `root` SSH access is enabled for each of your machines you can skip this section.
-
-By default, a new `debian` install disables SSH access for the `root` user. This is done for security reasons as the `root` user has total administrative control of unix-like systems. If a weak password is used on a machine connected to the internet, well, let's just say it's only a matter of time before your machine belongs to someone else. As mentioned earlier, we are going to enable `root` access over SSH in order to streamline the steps in this tutorial. Security is a tradeoff, and in this case, we are optimizing for convenience. Log on to each machine via SSH using your user account, then switch to the `root` user using the `su` command:
+These Debian images do not require direct `root` SSH access. Whenever you need a root shell on a machine, connect as `debian` first and then use `sudo -i`:
 
 ```bash
-su - root
-```
-
-Edit the `/etc/ssh/sshd_config` SSH daemon configuration file and set the `PermitRootLogin` option to `yes`:
-
-```bash
-sed -i \
-  's/^#*PermitRootLogin.*/PermitRootLogin yes/' \
-  /etc/ssh/sshd_config
-```
-
-Restart the `sshd` SSH server to pick up the updated configuration file:
-
-```bash
-systemctl restart sshd
+sudo -i
 ```
 
 ### Generate and Distribute SSH Keys
@@ -76,16 +62,16 @@ Your public key has been saved in /root/.ssh/id_rsa.pub
 Copy the SSH public key to each machine:
 
 ```bash
-while read IP FQDN HOST SUBNET; do
-  ssh-copy-id root@${IP}
+while read -r IP FQDN HOST SUBNET; do
+  ssh-copy-id debian@${IP}
 done < machines.txt
 ```
 
 Once each key is added, verify SSH public key access is working:
 
 ```bash
-while read IP FQDN HOST SUBNET; do
-  ssh -n root@${IP} hostname
+while read -r IP FQDN HOST SUBNET; do
+  ssh -n debian@${IP} hostname
 done < machines.txt
 ```
 
@@ -104,19 +90,18 @@ To configure the hostname for each machine, run the following commands on the `j
 Set the hostname on each machine listed in the `machines.txt` file:
 
 ```bash
-while read IP FQDN HOST SUBNET; do
-    CMD="sed -i 's/^127.0.1.1.*/127.0.1.1\t${FQDN} ${HOST}/' /etc/hosts"
-    ssh -n root@${IP} "$CMD"
-    ssh -n root@${IP} hostnamectl set-hostname ${HOST}
-    ssh -n root@${IP} systemctl restart systemd-hostnamed
+while read -r IP FQDN HOST SUBNET; do
+  ssh -n debian@${IP} "sudo sed -i 's/^127.0.1.1.*/127.0.1.1\t${FQDN} ${HOST}/' /etc/hosts"
+  ssh -n debian@${IP} "sudo hostnamectl set-hostname ${HOST}"
+  ssh -n debian@${IP} "sudo systemctl restart systemd-hostnamed"
 done < machines.txt
 ```
 
 Verify the hostname is set on each machine:
 
 ```bash
-while read IP FQDN HOST SUBNET; do
-  ssh -n root@${IP} hostname --fqdn
+while read -r IP FQDN HOST SUBNET; do
+  ssh -n debian@${IP} hostname --fqdn
 done < machines.txt
 ```
 
@@ -140,7 +125,7 @@ echo "# Kubernetes The Hard Way" >> hosts
 Generate a host entry for each machine in the `machines.txt` file and append it to the `hosts` file:
 
 ```bash
-while read IP FQDN HOST SUBNET; do
+while read -r IP FQDN HOST SUBNET; do
     ENTRY="${IP} ${FQDN} ${HOST}"
     echo $ENTRY >> hosts
 done < machines.txt
@@ -195,7 +180,7 @@ At this point you should be able to SSH to each machine listed in the `machines.
 
 ```bash
 for host in server node-0 node-1
-   do ssh root@${host} hostname
+   do ssh debian@${host} hostname
 done
 ```
 
@@ -212,10 +197,10 @@ In this section you will append the host entries from `hosts` to `/etc/hosts` on
 Copy the `hosts` file to each machine and append the contents to `/etc/hosts`:
 
 ```bash
-while read IP FQDN HOST SUBNET; do
-  scp hosts root@${HOST}:~/
+while read -r IP FQDN HOST SUBNET; do
+  scp hosts debian@${HOST}:~/
   ssh -n \
-    root@${HOST} "cat hosts >> /etc/hosts"
+    debian@${HOST} "cat ~/hosts | sudo tee -a /etc/hosts >/dev/null"
 done < machines.txt
 ```
 

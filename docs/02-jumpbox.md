@@ -7,10 +7,16 @@ Think of the `jumpbox` as the administration machine that you will use as a home
 Log in to the `jumpbox`:
 
 ```bash
-ssh root@jumpbox
+ssh debian@jumpbox
 ```
 
-All commands will be run as the `root` user. This is being done for the sake of convenience, and will help reduce the number of commands required to set everything up.
+Start a root shell with `sudo`:
+
+```bash
+sudo -i
+```
+
+The rest of the commands in this tutorial assume you are in a `root` shell on the `jumpbox`. Using `sudo -i` keeps the commands the same without requiring direct `root` SSH access.
 
 ### Install Command Line Utilities
 
